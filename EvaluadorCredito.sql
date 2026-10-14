@@ -47,8 +47,8 @@ insert into Persona (nombrePersona,apellidoPersona,dni,idCliente) values ("Nanti
 delimiter //
 CREATE PROCEDURE historialPersona();
 BEGIN
-	IF EXISTS (select c.nombreCliente,p.nombrePersona,p.apellidoPersona,c.ingresos,c.gastos,c.historial from Cliente as c join Persona as p on c.idCliente = p.idCliente);
-		IF exists (select c.nombreCliente,p.nombrePersona,p.apellidoPersona from Cliente as c join Persona as p on c.idCliente = p.idCliente where c.gastos > c.ingresos);
+	IF EXISTS (select c.nombreCliente,p.nombrePersona,p.apellidoPersona,c.ingresos,c.gastos,c.historial from Cliente as c join Persona as p on c.idCliente = p.idCliente) THEN
+		IF exists (select c.nombreCliente,p.nombrePersona,p.apellidoPersona from Cliente as c join Persona as p on c.idCliente = p.idCliente where c.gastos > c.ingresos) THEN 
     update Cliente set historial = "Deudor" where Cliente.gastos > Cliente.ingresos;
     End if;
   end if;
