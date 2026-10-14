@@ -1,6 +1,6 @@
-Create database EvaluadorCredito;
-use EvaluadorCredito;
-
+-- create a table
+create database EvaluadorCrediticio;
+use EvaluadorCrediticio;
 -- create
 CREATE TABLE Usuario (
     idUsuario int not null auto_increment,
@@ -44,9 +44,16 @@ insert into Cliente (nombreCliente,ingresos,gastos,historial) values ("santiEmpr
 insert into Empresa (rubro,director,idCliente) values ("Bar","santiEmpresa",2);
 insert into Persona (nombrePersona,apellidoPersona,dni,idCliente) values ("Nanti","Goldstein","67676767",1);
 
-select c.nombreCliente,p.nombrePersona,p.apellidoPersona,c.ingresos,c.gastos,c.historial from Cliente as c join Persona as p on c.idCliente = p.idCliente where c.idCliente = 1;
+delimiter //
+CREATE PROCEDURE historialPersona();
+BEGIN
+	IF EXISTS (select c.nombreCliente,p.nombrePersona,p.apellidoPersona,c.ingresos,c.gastos,c.historial from Cliente as c join Persona as p on c.idCliente = p.idCliente);
+		IF exists (select c.nombreCliente,p.nombrePersona,p.apellidoPersona from Cliente as c join Persona as p on c.idCliente = p.idCliente where c.gastos > c.ingresos);
+    update Cliente set historial = "Deudor" where Cliente.gastos > Cliente.ingresos;
+    End if;
+  end if;
+END //
+delimiter ;
 
-select c.nombreCliente,e.rubro,e.director,c.ingresos,c.gastos,c.historial from Cliente as c join Empresa as e on c.idCliente = e.idCliente where e.idCliente = 2;
-
-
+call historialPersona();
 
