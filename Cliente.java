@@ -1,5 +1,5 @@
     package com.mycompany.evaluadorcrediticio;
-
+import java.util.Scanner;
     //@autor Miguel
 
 public abstract class Cliente {
@@ -15,12 +15,15 @@ public abstract class Cliente {
             this.historial = historial;
         }
 
-        abstract void evaluarHistorial();
+        abstract void evaluarHistorial(String op);
 
-        abstract void generarHistorial();
+        abstract void generarHistorial(Scanner sc);
 
         public String getNombre(){
             return this.nombre;
+        }
+        public Cliente(){
+            
         }
     
 }
