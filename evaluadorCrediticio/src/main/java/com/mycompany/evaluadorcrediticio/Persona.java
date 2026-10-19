@@ -1,6 +1,6 @@
 package com.mycompany.evaluadorcrediticio;
 import java.util.Scanner;
-//miguel
+//@miguel
 public class Persona extends Cliente{
     private String nombrePersona;
 
@@ -23,14 +23,13 @@ public class Persona extends Cliente{
     public void comprobarHistorialPersona(Scanner sc){
         System.out.println("================Historial crediticio de persona========================");
         System.out.print("Como te llamas we: ");
-        String nombre = sc.nextLine();
-        System.out.print(nombre + " Es malo?: ");
+        nombrePersona = sc.nextLine();
+        System.out.print(nombre + " es malo?: ");
         String op = sc.nextLine();
         evaluarHistorialPersona(op);
 
-    }
-    public Persona() {
 
     }
-    
+    public Persona() {
+    }
 }
