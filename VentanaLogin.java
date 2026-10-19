@@ -4,8 +4,6 @@
  */
 package com.mycompany.evaluadorcrediticio;
 
-import javax.swing.JOptionPane;
-
 /**
  *
  * @author usrlocal
@@ -96,23 +94,8 @@ public class VentanaLogin extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        if(evt.getSource()== jTextField1){
-            String nombreUs = jTextField1.getText();
-            String pwd = new String(jPasswordField1.getPassword());
-            if(nombreUs.isEmpty() || pwd.isEmpty()){
-                JOptionPane.showMessageDialog(this, "Debe rellenar todos los campos");
-            }else{
-                VentanaPrincipal principal = new VentanaPrincipal();
-                principal.setVisible(true);
-                
-                this.dispose();
-            }
-                
-                    
-      
-            }
-        }
-
+        
+        
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
@@ -148,4 +131,4 @@ public class VentanaLogin extends javax.swing.JFrame {
     private javax.swing.JPasswordField jPasswordField1;
     private javax.swing.JTextField jTextField1;
     // End of variables declaration//GEN-END:variables
-
+}
