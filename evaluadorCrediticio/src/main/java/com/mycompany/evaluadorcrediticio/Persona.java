@@ -4,12 +4,12 @@ import java.util.Scanner;
 public class Persona extends Cliente{
     private String nombrePersona;
 
-    public Persona(String nombre, double ingresos, double gastos, String historial, String nombrePersona){
-        super(nombre,ingresos,gastos,historial);
+    public Persona(double ingresos, double gastos, String historial, String nombrePersona){
+        super(ingresos,gastos,historial);
         this.nombrePersona = nombrePersona;
         Scanner scanner = new Scanner(System.in);
     }
-    public void evaluarHistorialPersona(String op){
+    public void evaluarHistorial(String op){
         if (op.equals("Si") || op.equals("sis")){
                 System.out.println("Mal historial ;v");
         }
@@ -20,16 +20,13 @@ public class Persona extends Cliente{
             System.out.println("Sos un pete un laburo tenes");
         }
     }
-    public void comprobarHistorialPersona(Scanner sc){
+    public void comprobarHistorial(Scanner sc){
         System.out.println("================Historial crediticio de persona========================");
         System.out.print("Como te llamas we: ");
         String nombre = sc.nextLine();
         System.out.print(nombre + " Es malo?: ");
         String op = sc.nextLine();
-        evaluarHistorialPersona(op);
-
-    }
-    public Persona() {
+        evaluarHistorial(op);
 
     }
     

@@ -32,7 +32,10 @@ public class ConexionBDD {
             bdd = partes[1];
             user = partes[2];
             pwd = partes[3];
-            url = "jdbc:mysql://" + server + "/" + bdd + "?serverTimezone=UTC";        }
+            url = "jdbc:mysql://" + server + "/" + bdd + "?serverTimezone=UTC" + "&useSSL=false" + "&allowPublicKeyRetrieval=true";
+        }catch(IOException io){
+            System.out.println("Error al leer el archivo: " + io.getMessage());
+        }
     }
     
     public void conectar(){
@@ -47,7 +50,7 @@ public class ConexionBDD {
         try{
             cnx.close();
         }catch(SQLException e){
-            
+            System.out.println("Error al cerrar la conexión: " + e.getMessage());
         }
     }
 }

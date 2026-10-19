@@ -11,14 +11,14 @@ import java.util.Scanner;
 public class EvaluadorCrediticio {
 
     static Cliente cliente;
-    static Persona persona = new Persona();
-    static Usuario usuario = new Usuario();
+    static Persona persona;
+    static Empresa empresa;
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         
         //System.out.println("\heramno!");     
         //usuario.inciarSesion();
-        persona.comprobarHistorialPersona(sc);
+        persona.comprobarHistorial(sc);
     }
 }
