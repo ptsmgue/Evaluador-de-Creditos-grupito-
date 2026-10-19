@@ -4,8 +4,8 @@ import java.util.Scanner;
 public class Persona extends Cliente{
     private String nombrePersona;
 
-    public Persona(String nombre, double ingresos, double gastos, String historial, String nombrePersona){
-        super(nombre,ingresos,gastos,historial);
+    public Persona(double ingresos, double gastos, String historial, String nombrePersona){
+        super(ingresos,gastos,historial);
         this.nombrePersona = nombrePersona;
         Scanner scanner = new Scanner(System.in);
     }
@@ -33,3 +33,19 @@ public class Persona extends Cliente{
     public Persona() {
     }
 }
+
+
+/**
+ * public void comprobarHistorial(){
+ *  String sql = "call comprobarHistorial()"
+ * 
+ *  try{
+ *      conexion.conectar();
+ *      CallableStatement cst = conexion.cnx.prepareCall(sql);
+ *      cst.setNString(1,)
+ * 
+ * }
+ *  
+ * }
+ * 
+ */

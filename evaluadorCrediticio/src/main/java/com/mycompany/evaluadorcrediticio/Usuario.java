@@ -19,7 +19,6 @@ String contra = "1234";
 
 System.out.print("Ingrese el usario: ");
 String usuariointput = scanner.nextLine();
-
 System.out.print("Ingrese la contraseña: ");
 String contraintput = scanner.nextLine();
 

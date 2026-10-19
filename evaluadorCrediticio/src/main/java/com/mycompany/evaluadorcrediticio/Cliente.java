@@ -8,8 +8,7 @@ public abstract class Cliente {
     public double gastos;
     public String historial;
 
-        public Cliente(String nombre, double ingresos, double gastos, String historial){
-            this.nombre = nombre;
+        public Cliente(double ingresos, double gastos, String historial){            
             this.ingresos = ingresos;
             this.gastos = gastos;
             this.historial = historial;
