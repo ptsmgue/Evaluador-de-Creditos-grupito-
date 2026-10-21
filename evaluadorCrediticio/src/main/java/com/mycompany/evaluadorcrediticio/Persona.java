@@ -30,16 +30,6 @@ public class Persona extends Cliente{
         }
     }
     public void comprobarHistorial(Scanner sc){
-        System.out.println("================Historial crediticio de persona========================");
-        System.out.print("Como te llamas we: ");
-        nombrePersona = sc.nextLine();
-        System.out.print(nombre + " es malo?: ");
-        String op = sc.nextLine();
-        evaluarHistorial(op);
-
-
-    }
-    public void comprobarHistorial(){
     String sql = "call verHistorialPersona()";
   
      try {

@@ -15,6 +15,8 @@ public class EvaluadorCrediticio {
     static Persona persona;
     static Usuario usuario;
     static ConexionBDD conexion;
+    static Empresa empresa;
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         try {
@@ -27,7 +29,7 @@ public class EvaluadorCrediticio {
         //System.out.println("\heramno!");     
         //usuario.inciarSesion();
         persona.setConexion(conexion);
-        persona.comprobarHistorial();
+        persona.comprobarHistorial(sc);
         System.out.println("JIJO");
     }
 }
