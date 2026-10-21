@@ -19,7 +19,7 @@ public class EvaluadorCrediticio {
         
         //System.out.println("\heramno!");     
         //usuario.inciarSesion();
-        persona.comprobarHistorialPersona(sc);
+        persona.comprobarHistorial(sc);
         System.out.println("JIJO");
     }
 }
