@@ -35,21 +35,40 @@ public class Persona extends Cliente{
 }
 
 
-/**
- * public void comprobarHistorial(){
- *  String sql = "call comprobarHistorial()"
- * 
- *  try(Connection conexion = new <variable_Coneccion>.conectar();
- *      CallableStatement cst = conexion.prepareCall(sql);
+/* 
+  public void comprobarHistorial(){
+   String sql = "call verHistorialPersona()";
+  
+   try (Connection conexion = new ConexionBDD.conectar();
+       CallableStatement cst = conexion.prepareCall(sql);{
         try (ResultSet rs = cst.executeQuery(sql)){
             System.out.println("Historial crediticio de personas");
         }
             catch (SQLException e){
                 System.out.println("Error al comprobar historial crediticio de personas: " + e.getMessage());
             }
-* 
- * }
- *  
- * }
- * 
- */
+ 
+ 
+        }
+  
+    }
+  
+ /*
+    public void altaPersona(String nombrePersona,String apellido,String dni,int idCliente){
+    String sql, query = "call altaPersona(?,?,?,?)";
+
+    try (Connection conexion = new ConexionBDD.conectar();
+       CallableStatement cst = conexion.prepareCall(sql);{
+
+       cst.setNString(1, nombrePersona);
+       cst.setNString(2, apellido);
+       cst.setNString(3, dni),
+       cst.setInt(4, idCliente)
+       try (ResultSet rs = cst.executeQuery(sql)){
+            System.out.println("Alta de cliente persona");        
+       }
+        catch (SQLException e){
+                System.out.println("Error al ingresar un cliente persona: " + e.getMessage());
+            }
+}
+ //*/
