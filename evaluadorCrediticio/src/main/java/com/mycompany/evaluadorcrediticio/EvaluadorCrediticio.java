@@ -4,6 +4,7 @@
 
 package com.mycompany.evaluadorcrediticio; 
 import java.util.Scanner;
+import java.io.IOException;
 /**
  *
  * @author Miguel
@@ -11,15 +12,22 @@ import java.util.Scanner;
 public class EvaluadorCrediticio {
 
     static Cliente cliente;
-    static Persona persona = new Persona();
-    static Usuario usuario = new Usuario();
-
+    static Persona persona;
+    static Usuario usuario;
+    static ConexionBDD conexion;
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+        try {
+            conexion = new ConexionBDD();
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
         
+        persona = new Persona();
         //System.out.println("\heramno!");     
         //usuario.inciarSesion();
-        persona.comprobarHistorial(sc);
+        persona.setConexion(conexion);
+        persona.comprobarHistorial();
         System.out.println("JIJO");
     }
 }

@@ -16,7 +16,7 @@ public abstract class Cliente {
 
         abstract void evaluarHistorial(String op);
 
-        abstract void comprobarHistorial(Scanner sc);
+        abstract void comprobarHistorial();
 
         public String getNombre(){
             return this.nombre;

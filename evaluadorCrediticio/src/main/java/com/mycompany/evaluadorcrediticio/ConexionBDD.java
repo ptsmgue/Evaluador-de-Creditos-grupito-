@@ -37,17 +37,22 @@ public class ConexionBDD {
     
     public void conectar(){
         try{
+            System.out.println("\nConectando a la base de datos...");
             cnx = DriverManager.getConnection(url, user, pwd);
+            System.out.println("Conexión exitosa a la base de datos.");
         }catch(SQLException e){
             System.out.println("\nError al conectar: " + e.getMessage());
         }
     }
     
     public void cerrar(){
-        try{
-            cnx.close();
-        }catch(SQLException e){
-            
+        try {
+            // Solo cerramos si la conexión existe y no está cerrada ya
+            if (cnx != null && !cnx.isClosed()) {
+                cnx.close();
+            }
+        } catch(SQLException e) {
+            System.out.println("Error al cerrar la base de datos: " + e.getMessage());
         }
     }
 }
