@@ -1,5 +1,6 @@
 package com.mycompany.evaluadorcrediticio;
 import java.util.Scanner;
+import java.sql.SQLException;
 
 public class Usuario{
 public String nombreUsuario;
@@ -64,17 +65,32 @@ scanner.close();
 }
 
 
-public void registarUsuario(){
+public void registarUsuario(String nombreUsuario, String contrasena){
+/*String dniString = new String(contrasena);  .getPassword() devuelve cifrado
+                                            entonces, lo pasamos a String sin cifrar 
+/*System.out.println(contrasenaString);
+System.out.println(dniString.length()); //era para verificar
+String response = "";
+if (validarPwd(contrasenaString, 8)){ //verifica formato de DNI
+    if (validarEmail(nombreUsuario)){ //verifica formato de email
+        response = ;
+    }else{
+        response = "Nombre inválido";
+        }
+    } else {
+        response = "contrasena inválido";
+    }
 
+    return response;
+    */
 }
 
-public void eliminarUsuario(){
+public void eliminarUsuario(String nombreUsuario, String contrasena){
+/*
 
+*/
 }
 
-public void listarUsuario(){
-    
-}
 public Usuario(){
 
 }
