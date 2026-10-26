@@ -24,12 +24,23 @@ public class EvaluadorCrediticio {
         } catch (IOException e) {
             throw new java.io.UncheckedIOException(e);
         }
-        
-        persona = new Persona();
         //System.out.println("\heramno!");     
         //usuario.inciarSesion();
-        persona.setConexion(conexion);
-        persona.comprobarHistorial(sc);
+        ingresarCliente(sc);
+        //persona.comprobarHistorial(sc);
         System.out.println("JIJO");
+    }
+public static void ingresarCliente(Scanner sc){
+    System.out.println("¿Quiere ingresar una empresa o una persona? (E/P)");
+    String opcion = sc.nextLine();
+
+    if (opcion.equalsIgnoreCase("P")) {
+        Persona p = new Persona();
+        p.setConexion(conexion);
+        p.ingresarClientePersona(); // Llama a pedir datos y luego hace el alta internamente
+        p.altaPersona();
+    } else if (opcion.equalsIgnoreCase("E")) {
+        System.out.println("Aun no we");
+    }
     }
 }

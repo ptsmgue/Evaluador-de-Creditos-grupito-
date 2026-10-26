@@ -7,8 +7,8 @@ public class Empresa extends Cliente {
     private String rubro;
     private String director;
     
-    public Empresa(double ingresos, double gastos, String historial, String nombreEmpresa, String rubro, String director) {
-        super(ingresos, gastos, historial);
+    public Empresa(String nombreCliente, double ingresos, double gastos, String historial, String nombreEmpresa, String rubro, String director) {
+        super(nombreCliente, ingresos, gastos, historial);
         this.nombreEmpresa = nombreEmpresa;
         this.rubro = rubro;
         this.director = director;
