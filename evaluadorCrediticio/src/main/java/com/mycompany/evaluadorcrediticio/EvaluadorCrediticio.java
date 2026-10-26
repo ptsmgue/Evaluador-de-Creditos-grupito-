@@ -40,7 +40,11 @@ public static void ingresarCliente(Scanner sc){
         p.ingresarClientePersona(); // Llama a pedir datos y luego hace el alta internamente
         p.altaPersona();
     } else if (opcion.equalsIgnoreCase("E")) {
-        System.out.println("Aun no we");
+        Empresa e = new Empresa();
+        e.setConexion(conexion);
+        e.ingresarClienteEmpresa();
+        e.ingresarEmpresa();
+        e.altaEmpresa();
     }
     }
 }

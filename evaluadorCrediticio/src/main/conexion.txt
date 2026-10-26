@@ -1,1 +1,1 @@
-localhost:3306,evaluadorcredito,root,98394912mamma
+localhost:3306,evaluadorcrediticio,root,98394912mamma
