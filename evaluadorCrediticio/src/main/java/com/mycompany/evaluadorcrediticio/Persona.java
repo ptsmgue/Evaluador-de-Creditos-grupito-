@@ -134,6 +134,42 @@ public class Persona extends Cliente{
             this.conx.cerrar();
             System.out.println(msj);
     }
+
+            
+    public void modificarPersona(){
+            System.out.print("Ingrese el dni de la persona a la que quiere modificar: ");
+            this.dni = sc.nextLine();
+            System.out.print("Ingrese el nombre que quiere modificar: ");
+            this.nombrePersona = sc.nextLine();
+            System.out.print("Ingrese el apellido que quiere modificar: ");
+            this.apellido = sc.nextLine();            
+
+                String query = "call modificarPersona(?,?,?)";
+                String msj = "";
+            try {
+                this.conx.conectar();
+                CallableStatement cst = conx.cnx.prepareCall(query);{
+
+                cst.setNString(1, this.nombrePersona);
+                cst.setNString(2, this.apellido);
+                cst.setNString(3, this.dni)  ;
+                boolean ejecucion = cst.execute();
+                if (ejecucion) {
+                ResultSet rs = cst.getResultSet();
+                if (rs.next()) {
+                    msj = rs.getString("MensajeError"); 
+                }
+            } else {
+                msj = "Cliente persona modificado correctamente";
+            }
+                }
+            }
+                catch (SQLException e){
+                        msj = "Error al modificar un cliente persona: " + e.getMessage();
+                }
+            this.conx.cerrar();
+            System.out.println(msj);
+    }
     public Persona() {
     }
 }
