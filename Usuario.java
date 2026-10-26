@@ -1,189 +1,54 @@
 package com.mycompany.evaluadorcrediticio;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HexFormat;
 import java.util.Scanner;
 
-public class Usuario {
+public class Usuario{
+public String nombreUsuario;
+public String contrasena;
+ConexionBDD conx;
 
-    public static final String ROL_ADMIN = "ADMIN";
-    public static final String ROL_USUARIO = "USUARIO";
+public Usuario(String nombreUsuario, String contrasena){
+    this.nombreUsuario = nombreUsuario;
+    this.contrasena = contrasena;
+}
 
-    private static final int LARGO_MIN_CONTRASENA = 4;
-    private static final int LARGO_MAX_CAMPO = 200; 
+public static void inciarSesion(){
+Scanner scanner = new Scanner(System.in);
 
-    public String nombreUsuario;
-    public String contrasena;
-    public String rol;
-
-    ConexionBDD conx;
-
-
-    // Constructores
-    public Usuario() {
-    }
-
-    public Usuario(String nombreUsuario, String contrasena) {
-        this.nombreUsuario = nombreUsuario;
-        this.contrasena = contrasena;
-    }
-
-    public Usuario(String nombreUsuario, String contrasena, String rol) {
-        this(nombreUsuario, contrasena);
-        this.rol = rol;
-    }
-
-    public void setConexion(ConexionBDD conexionDesdeMain) {
-        this.conx = conexionDesdeMain;
-    }
-
-    // Menú inicial
-    public void menuPrincipal(Scanner sc) {
-        int opcion;
-        do {
-            System.out.println("\n=== Evaluador Crediticio ===");
-            System.out.println("1. Iniciar sesión");
-            System.out.println("2. Salir");
-            opcion = leerOpcion(sc, "Elige una opción: ");
-
-            switch (opcion) {
-                case 1 -> {
-                    if (iniciarSesion(sc)) {
-                        if (esAdmin()) {
-                            menuAdmin(sc);
-                        } else {
-                            menuUsuario(sc);
-                        }
-                    }
-                }
-                case 2 -> System.out.println("Hasta luego.");
-                default -> System.out.println("Opción no válida.");
-            }
-        } while (opcion != 2);
-    }
+String usuario = "admin";
+String contra = "1234";
 
 
-    // Inicio de sesión
-    public boolean iniciarSesion(Scanner sc) {
-        System.out.print("Ingrese el usuario: ");
-        String nombre = sc.nextLine().trim();
-        System.out.print("Ingrese la contraseña: ");
-        String pass = sc.nextLine();
+System.out.print("Ingrese el usario: ");
+String usuariointput = scanner.nextLine();
+System.out.print("Ingrese la contraseña: ");
+String contraintput = scanner.nextLine();
 
-        if (!abrirConexion()) {
-            return false;
-        }
+if (usuariointput.equals(usuario) && contraintput.equals(contra)){
+    System.out.println("Incio");
+} else{
+    System.out.println("pipipi");
+}
+}
 
-        String sql = "SELECT rol FROM usuario WHERE nombreUsuario = ? AND contrasena = ?";
-        try (PreparedStatement ps = conx.cnx.prepareStatement(sql)) {
-            ps.setString(1, nombre);
-            ps.setString(2, hash(pass));
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    this.nombreUsuario = nombre;
-                    this.rol = rs.getString("rol");
-                    System.out.println("Bienvenido, " + nombre + " (" + this.rol + ")");
-                    return true;
-                }
-            }
-            System.out.println("Usuario o contraseña incorrectos.");
-        } catch (SQLException e) {
-            System.out.println("Error al iniciar sesión: " + e.getMessage());
-        } finally {
-            conx.cerrar();
-        }
-        return false;
-    }
-
-    public void cerrarSesion() {
-        this.nombreUsuario = null;
-        this.contrasena = null;
-        this.rol = null;
-        System.out.println("Sesión cerrada.");
-    }
-
-    // Menú del Admin
-    private void menuAdmin(Scanner sc) {
-        int opcion;
-        do {
-            System.out.println("\n--- Menú de Admin ---");
-            System.out.println("1. Registrar usuario");
-            System.out.println("2. Eliminar usuario");
-            System.out.println("3. Listar usuarios");
-            System.out.println("4. Cerrar sesión");
-            opcion = leerOpcion(sc, "Elige una opción: ");
-
-            switch (opcion) {
-                case 1 -> registrarUsuario(sc);
-                case 2 -> eliminarUsuario(sc);
-                case 3 -> listarUsuarios();
-                case 4 -> cerrarSesion();
-                default -> System.out.println("Opción no válida.");
-            }
-        } while (opcion != 4);
-    }
-
-    // Menú del Usuario normal
-    private void menuUsuario(Scanner sc) {
-        int opcion;
-        do {
-            System.out.println("\n--- Menú de Usuario ---");
-            System.out.println("1. Ver historial crediticio de personas");
-            System.out.println("2. Cerrar sesión");
-            opcion = leerOpcion(sc, "Elige una opción: ");
-
-            switch (opcion) {
-                case 1 -> {
-                    Persona persona = new Persona();
-                    persona.setConexion(conx);
-                    persona.comprobarHistorial(sc);
-                }
-                case 2 -> cerrarSesion();
-                default -> System.out.println("Opción no válida.");
-            }
-        } while (opcion != 2);
-    }
-
-    // Acciones exclusivas del Admin
-    public void registrarUsuario(Scanner sc) {
-        if (!esAdmin()) {
-            System.out.println("Solo un admin puede registrar usuarios.");
-            return;
-        }
-
+ public void registrarUsuario(Scanner sc) {
         System.out.print("Nombre del nuevo usuario: ");
         String nombre = sc.nextLine().trim();
-        if (nombre.isEmpty() || nombre.length() > LARGO_MAX_CAMPO) {
+        if (nombre.isEmpty() || nombre.length() > 10) {
             System.out.println("Nombre inválido (no puede estar vacío ni superar "
-                    + LARGO_MAX_CAMPO + " caracteres).");
+                    + 10 + " caracteres).");
             return;
         }
 
-        System.out.print("Contraseña (mínimo " + LARGO_MIN_CONTRASENA + " caracteres): ");
+        System.out.print("Contraseña (mínimo " + 10 + " caracteres): ");
         String pass = sc.nextLine();
-        if (pass.length() < LARGO_MIN_CONTRASENA) {
+        if (pass.length() < 10) {
             System.out.println("Contraseña inválida: muy corta.");
             return;
         }
-
-        int opcionRol = leerOpcion(sc, "Rol (1 = Usuario, 2 = Admin): ");
-        String nuevoRol;
-        if (opcionRol == 1) {
-            nuevoRol = ROL_USUARIO;
-        } else if (opcionRol == 2) {
-            nuevoRol = ROL_ADMIN;
-        } else {
-            System.out.println("Rol inválido.");
-            return;
-        }
-
-        if (!abrirConexion()) {
+         if (!abrirConexion()) {
             return;
         }
 
@@ -196,24 +61,20 @@ public class Usuario {
             String sql = "INSERT INTO usuario (nombreUsuario, contrasena, rol) VALUES (?, ?, ?)";
             try (PreparedStatement ps = conx.cnx.prepareStatement(sql)) {
                 ps.setString(1, nombre);
-                ps.setString(2, hash(pass));
-                ps.setString(3, nuevoRol);
+                ps.setString(2, (pass));
                 ps.executeUpdate();
-                System.out.println("Usuario '" + nombre + "' registrado como " + nuevoRol + ".");
+                System.out.println("Usuario '" + nombre + "' registrado como ");
             }
         } catch (SQLException e) {
             System.out.println("Error al registrar usuario: " + e.getMessage());
         } finally {
             conx.cerrar();
         }
-    }
+    }   
 
-    public void eliminarUsuario(Scanner sc) {
-        if (!esAdmin()) {
-            System.out.println("Solo un admin puede eliminar usuarios.");
-            return;
-        }
 
+
+ public void eliminarUsuario(Scanner sc) {
         System.out.print("Nombre del usuario a eliminar: ");
         String nombre = sc.nextLine().trim();
         if (nombre.isEmpty()) {
@@ -231,7 +92,6 @@ public class Usuario {
             System.out.println("Operación cancelada.");
             return;
         }
-
         if (!abrirConexion()) {
             return;
         }
@@ -251,12 +111,10 @@ public class Usuario {
             conx.cerrar();
         }
     }
+       
 
-    public void listarUsuarios() {
-        if (!esAdmin()) {
-            System.out.println("Solo un admin puede listar usuarios.");
-            return;
-        }
+public void listarUsuarios() {
+
         if (!abrirConexion()) {
             return;
         }
@@ -284,14 +142,7 @@ public class Usuario {
             conx.cerrar();
         }
     }
-
-    // Auxiliares
-    private boolean esAdmin() {
-        return ROL_ADMIN.equals(this.rol);
-    }
-
-    /** Usa la conexión ya abierta, por eso se llama dentro de un bloque con conectar(). */
-    private boolean existeUsuario(String nombre) throws SQLException {
+      private boolean existeUsuario(String nombre) throws SQLException {
         String sql = "SELECT 1 FROM usuario WHERE nombreUsuario = ?";
         try (PreparedStatement ps = conx.cnx.prepareStatement(sql)) {
             ps.setString(1, nombre);
@@ -301,7 +152,7 @@ public class Usuario {
         }
     }
 
-    private boolean abrirConexion() {
+     private boolean abrirConexion() {
         if (conx == null) {
             System.out.println("Error: no hay conexión configurada (falta setConexion).");
             return false;
@@ -314,21 +165,8 @@ public class Usuario {
         }
     }
 
-    private int leerOpcion(Scanner sc, String mensaje) {
-        System.out.print(mensaje);
-        try {
-            return Integer.parseInt(sc.nextLine().trim());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-    }
+public Usuario(){
 
-    private static String hash(String texto) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(texto.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 no disponible", e);
-        }
-    }
+}
+
 }
