@@ -68,11 +68,11 @@ public class Persona extends Cliente{
     }
     public void altaPersona(){
             System.out.println("Ingrese su nombre");
-            nombrePersona = sc.nextLine();
+            this.nombrePersona = sc.nextLine();
             System.out.println("Ingrese su apellido");
-            apellido = sc.nextLine();
+            this.apellido = sc.nextLine();
             System.out.println("Ingrese su DNI de la persona: ");
-            dni = sc.nextLine();
+            this.dni = sc.nextLine();
             
                 String query = "call altaPersona(?,?,?,?,?,?,?)";
                 String msj = "";
@@ -80,13 +80,13 @@ public class Persona extends Cliente{
                 this.conx.conectar();
                 CallableStatement cst = conx.cnx.prepareCall(query);{
 
-                cst.setNString(1, nombreCliente);
-                cst.setDouble(2, ingresos);
-                cst.setDouble(3, gastos);
-                cst.setNString(4, historial);
-                cst.setNString(5, nombrePersona);
-                cst.setNString(6, apellido);
-                cst.setNString(7, dni);  
+                cst.setNString(1, this.nombreCliente);
+                cst.setDouble(2, this.ingresos);
+                cst.setDouble(3, this.gastos);
+                cst.setNString(4, this.historial);
+                cst.setNString(5, this.nombrePersona);
+                cst.setNString(6, this.apellido);
+                cst.setNString(7, this.dni);  
                 boolean ejecucion = cst.execute();
                 if (ejecucion) {
                 ResultSet rs = cst.getResultSet();
@@ -105,7 +105,35 @@ public class Persona extends Cliente{
             System.out.println(msj);
     }
 
-    
+        public void bajaPersona(){
+            System.out.print("Ingrese el dni de la persona a eliminar");
+            this.dni = sc.nextLine();
+
+                String query = "call bajaPersona(?,?)";
+                String msj = "";
+            try {
+                this.conx.conectar();
+                CallableStatement cst = conx.cnx.prepareCall(query);{
+
+                cst.setNString(1, this.dni);
+                cst.setNString(2, this.nombreCliente);  
+                boolean ejecucion = cst.execute();
+                if (ejecucion) {
+                ResultSet rs = cst.getResultSet();
+                if (rs.next()) {
+                    msj = rs.getString("MensajeError"); 
+                }
+            } else {
+                msj = "Cliente persona eliminado correctamente";
+            }
+                }
+            }
+                catch (SQLException e){
+                        msj = "Error al eliminar un cliente persona: " + e.getMessage();
+                }
+            this.conx.cerrar();
+            System.out.println(msj);
+    }
     public Persona() {
     }
 }
