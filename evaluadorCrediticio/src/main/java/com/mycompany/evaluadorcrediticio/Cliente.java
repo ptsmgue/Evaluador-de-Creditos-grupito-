@@ -18,7 +18,7 @@ public abstract class Cliente {
             this.conx = conx;
         }
 
-        public void ingresarClientePersona(){
+        public void ingresarCliente(){
             System.out.print("Ingrese el nombre como cliente: ");
             this.nombreCliente = scan.nextLine();
             System.out.print("Ingrese los ingresos del cliente: ");
@@ -29,6 +29,11 @@ public abstract class Cliente {
             gastos = Double.parseDouble(strGastos);
             System.out.print("Ingrese el historial del cliente: ");
             this.historial = scan.nextLine();
+  
+        }
+        public void bajaCliente(){
+            System.out.print("Ingrese su nombre de cliente: ");
+            this.nombreCliente = scan.nextLine();
         }
 
         public void ingresarClienteEmpresa(){

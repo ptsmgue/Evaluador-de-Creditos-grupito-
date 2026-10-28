@@ -37,8 +37,10 @@ public static void ingresarCliente(Scanner sc){
     if (opcion.equalsIgnoreCase("P")) {
         Persona p = new Persona();
         p.setConexion(conexion);
-        p.ingresarClientePersona(); // Llama a pedir datos y luego hace el alta internamente
-        p.altaPersona();
+        //p.ingresarCliente(); // Llama a pedir datos y luego hace el alta internamente
+        //p.altaPersona();
+        p.bajaCliente();
+        p.bajaPersona();
     } else if (opcion.equalsIgnoreCase("E")) {
         Empresa e = new Empresa();
         e.setConexion(conexion);
