@@ -42,7 +42,11 @@ public static void ingresarCliente(Scanner sc){
         p.bajaCliente();
         p.bajaPersona();
     } else if (opcion.equalsIgnoreCase("E")) {
-        System.out.println("Aun no we");
+        Empresa e = new Empresa();
+        e.setConexion(conexion);
+        e.ingresarClienteEmpresa();
+        e.ingresarEmpresa();
+        e.altaEmpresa();
     }
     }
 }

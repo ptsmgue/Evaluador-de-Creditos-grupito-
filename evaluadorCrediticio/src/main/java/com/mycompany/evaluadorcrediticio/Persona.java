@@ -8,23 +8,19 @@ public class Persona extends Cliente{
     private String nombrePersona;
     private String apellido;
     private String dni;
-    ConexionBDD conx;
     private final Scanner sc = new Scanner(System.in);
 
     public Persona(String nombreCliente, double ingresos, double gastos, String historial) {
-        super(nombreCliente, ingresos, gastos, historial);
+        super(nombreCliente, ingresos, gastos, historial, null);
     }
 
     public Persona(String nombreCliente, double ingresos, double gastos, String historial, String nombrePersona,ConexionBDD conx){
-        super(nombreCliente, ingresos, gastos, historial);
+        super(nombreCliente, ingresos, gastos, historial, conx);
         this.nombrePersona = nombrePersona;
         this.apellido = apellido;
         this.dni = dni;
-        this.conx = conx;
     }
-    public void setConexion(ConexionBDD conexion) {
-    this.conx = conexion;
-    }
+
     public void evaluarHistorial(String op){
         if (op.equals("Si") || op.equals("sis")){
                 System.out.println("Mal historial ;v");
