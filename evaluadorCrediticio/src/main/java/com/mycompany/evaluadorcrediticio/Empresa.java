@@ -69,7 +69,7 @@ public class Empresa extends Cliente {
                     mensaje = rs.getString("MensajeError"); 
                 }
             } else {
-                mensaje = "Cliente persona ingresado correctamente";
+                mensaje = "Empresa ingresada correctamente";
             }
         }catch(SQLException e){
             System.out.println("Error al conectar a la base de datos: " + e.getMessage());
@@ -80,6 +80,34 @@ public class Empresa extends Cliente {
         System.out.println(mensaje);
     }
 
+    public void bajaEmpresa(){
+        String nombreEliminar = "";
+        System.out.print("Ingrese el nombre de la empresa a eliminar: ");
+        Scanner sc = new Scanner(System.in);
+        nombreEliminar = sc.nextLine();
+        String query = "call baja_empresa(?)";
+        String msj = "";
+        try{
+            conx.conectar();
+            CallableStatement cst = conx.cnx.prepareCall(query);
+            cst.setString(1, nombreEliminar);
+            boolean ejecucion = cst.execute();
+            if (ejecucion) {
+                ResultSet rs = cst.getResultSet();
+                if (rs.next()) {
+                    msj = rs.getString("MensajeError"); 
+                }
+            } else {
+                msj = "Empresa eliminada correctamente";
+            }
+        }catch(SQLException e){
+            System.out.println("Error al conectar a la base de datos: " + e.getMessage());
+            return;
+        }finally{
+            conx.cerrar();
+        }
+        System.out.println(msj);
+    }
     public Empresa(){}
 
 
