@@ -45,6 +45,7 @@ public static void ingresarCliente(Scanner sc){
         e.ingresarClienteEmpresa();
         e.ingresarEmpresa();
         e.altaEmpresa();
+        e.bajaEmpresa();
     }
     }
 }
