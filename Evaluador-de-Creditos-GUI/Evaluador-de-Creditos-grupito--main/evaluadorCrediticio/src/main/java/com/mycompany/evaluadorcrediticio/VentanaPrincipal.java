@@ -22,6 +22,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -29,66 +30,87 @@ import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import java.util.function.Consumer;
 
 /**
  * Ventana principal: carga y baja de clientes (personas y empresas).
  *
- * Esta clase solo lee los campos, se los pasa a {@link Persona} / {@link Empresa}
- * y muestra lo que esas clases devuelven. Las operaciones de base de datos
- * corren en segundo plano ({@link TareaDB}) para no congelar la ventana.
+ * Esta clase solo lee los campos del formulario, se los pasa a
+ * {@link Persona} / {@link Empresa} y muestra lo que esas clases devuelven.
+ * Las operaciones de base de datos corren en segundo plano ({@link TareaDB})
+ * para no congelar la ventana; la barra de progreso indica visualmente cuándo
+ * hay una operación en curso.
  */
 public class VentanaPrincipal extends JFrame {
 
     private static final Color VERDE = new Color(0x1B7F3B);
-    private static final Color ROJO = new Color(0xB00020);
-    private static final NumberFormat PESOS = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-AR"));
+    private static final Color ROJO  = new Color(0xB00020);
+    private static final NumberFormat PESOS =
+            NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-AR"));
 
-    /** Lo que vuelve de segundo plano: el resultado de la operación y, si corresponde, el listado actualizado. */
-    private record Respuesta(Resultado resultado, List<Persona.Resumen> personas) {
-    }
+    // ------------------------------------------------------------------ resultado combinado (operación + listado)
+    private record RespPersona(Resultado res, List<Persona.Resumen> lista) {}
+    private record RespEmpresa(Resultado res, List<Empresa.Resumen> lista) {}
 
+    // ------------------------------------------------------------------ estado general
     private final ConexionBDD conexion;
-    /** Solo se usan para traducir el checkbox de historial al código de cada tipo (y los códigos al mostrarlos). */
-    private final Persona personaAuxiliar = new Persona();
-    private final Empresa empresaAuxiliar = new Empresa();
+    /** Auxiliares para traducir checkbox ↔ código de historial de cada tipo. */
+    private final Persona  personaAux  = new Persona();
+    private final Empresa  empresaAux  = new Empresa();
     private VentanaUsuario ventanaUsuario;
 
-    // Formulario
-    private final JComboBox<String> cmbTipo = new JComboBox<>(new String[] { "Persona", "Empresa" });
-    private final JLabel lblNombre = new JLabel("Nombre");
-    private final JTextField txtNombre = new JTextField(20);
-    private final JLabel lblApellido = new JLabel("Apellido");
+    // ------------------------------------------------------------------ formulario
+    private final JComboBox<String> cmbTipo = new JComboBox<>(new String[]{"Persona", "Empresa"});
+
+    /** Nombre único del cliente en el sistema (independiente del nombre real de la persona). */
+    private final JTextField txtNombreCliente = new JTextField(20);
+
+    /** Para Persona: nombre real. Para Empresa: se usa el campo de nombre del formulario
+     *  solo si el SP de empresa lo requiere separado (actualmente no lo hace). */
+    private final JLabel     lblNombre   = new JLabel("Nombre");
+    private final JTextField txtNombre   = new JTextField(20);
+
+    private final JLabel     lblApellido = new JLabel("Apellido");
     private final JTextField txtApellido = new JTextField(20);
-    private final JLabel lblDni = new JLabel("DNI");
-    private final JTextField txtDni = new JTextField(20);
-    private final JLabel lblRubro = new JLabel("Rubro");
-    private final JTextField txtRubro = new JTextField(20);
-    private final JLabel lblDirector = new JLabel("Director");
+    private final JLabel     lblDni      = new JLabel("DNI");
+    private final JTextField txtDni      = new JTextField(20);
+
+    private final JLabel     lblRubro    = new JLabel("Rubro");
+    private final JTextField txtRubro    = new JTextField(20);
+    private final JLabel     lblDirector = new JLabel("Director");
     private final JTextField txtDirector = new JTextField(20);
-    private final JCheckBox chkBuenHistorial = new JCheckBox("¿Tiene buen historial?");
-    private final JTextField txtIngresos = new JTextField(20);
-    private final JTextField txtGastos = new JTextField(20);
+
+    private final JCheckBox  chkHistorial = new JCheckBox("¿Tiene buen historial?");
+    private final JTextField txtIngresos  = new JTextField(20);
+    private final JTextField txtGastos    = new JTextField(20);
+
     private final JButton btnRegistrar = new JButton("Registrar");
-    private final JButton btnEliminar = new JButton("Eliminar");
+    private final JButton btnEliminar  = new JButton("Eliminar");
 
-    // Barra de herramientas
-    private final JButton btnGuardar = new JButton("Guardar");
+    // ------------------------------------------------------------------ barra de herramientas
+    private final JButton btnGuardar   = new JButton("Guardar");
     private final JButton btnRefrescar = new JButton("Refrescar");
-    private final JButton btnUsuarios = new JButton("Abrir ventana de usuarios");
+    private final JButton btnUsuarios  = new JButton("Abrir ventana de usuarios");
 
-    // Listado y estado
-    private final DefaultTableModel modeloTabla = new DefaultTableModel(
-            new Object[] { "Nombre", "Apellido", "Ingresos", "Gastos", "Historial" }, 0) {
-        @Override
-        public boolean isCellEditable(int fila, int columna) {
-            return false;
-        }
-    };
-    private final JLabel lblEstado = new JLabel(" ");
+    /** Botones que se bloquean mientras hay una operación de BD en curso. */
+    private final JButton[] botonesBD = {btnRegistrar, btnEliminar, btnGuardar, btnRefrescar};
 
+    // ------------------------------------------------------------------ tabla y estado
+    private final DefaultTableModel modeloPersonas = crearModelo(
+            "Nombre cliente", "Nombre", "Apellido", "Ingresos", "Gastos", "Historial");
+    private final DefaultTableModel modeloEmpresas = crearModelo(
+            "Nombre cliente", "Rubro", "Director", "Ingresos", "Gastos", "Historial");
+
+    private final JTable tabla = new JTable(modeloPersonas);
+
+    private final JProgressBar barraProgreso = new JProgressBar();
+    private final JLabel       lblEstado     = new JLabel(" ");
+
+    /** Grupos de campos exclusivos de cada tipo (se muestran u ocultan al cambiar el combo). */
     private JComponent[] camposPersona;
     private JComponent[] camposEmpresa;
 
+    // ==================================================================
     public VentanaPrincipal(ConexionBDD conexion) {
         super("Evaluador crediticio - Carga de clientes");
         this.conexion = conexion;
@@ -96,7 +118,7 @@ public class VentanaPrincipal extends JFrame {
 
         construirInterfaz();
         conectarEventos();
-        actualizarTipo();
+        actualizarTipo();   // aplica campos visibles + carga inicial
 
         Usuario actual = Usuario.getUsuarioActual();
         if (actual != null) {
@@ -105,17 +127,21 @@ public class VentanaPrincipal extends JFrame {
         pack();
         setMinimumSize(getSize());
         setLocationRelativeTo(null);
-
-        cargarPersonas(true);
     }
 
-    // ================================================================== construcción de la interfaz
+    // ================================================================== construcción
+
+    private static DefaultTableModel crearModelo(String... columnas) {
+        return new DefaultTableModel(columnas, 0) {
+            @Override public boolean isCellEditable(int f, int c) { return false; }
+        };
+    }
 
     private void construirInterfaz() {
         JPanel raiz = new JPanel(new BorderLayout());
         setContentPane(raiz);
         setJMenuBar(construirMenu());
-        raiz.add(construirBarraHerramientas(), BorderLayout.NORTH);
+        raiz.add(construirBarra(), BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout(0, 10));
         centro.setBorder(new EmptyBorder(14, 20, 6, 20));
@@ -124,20 +150,29 @@ public class VentanaPrincipal extends JFrame {
         titulo.setFont(titulo.getFont().deriveFont(24f));
         centro.add(titulo, BorderLayout.NORTH);
 
-        JPanel contenedorForm = new JPanel(new GridBagLayout()); // centra el formulario
-        contenedorForm.add(construirFormulario());
-        centro.add(contenedorForm, BorderLayout.CENTER);
+        JPanel centroForm = new JPanel(new GridBagLayout());
+        centroForm.add(construirFormulario());
+        centro.add(centroForm, BorderLayout.CENTER);
         centro.add(construirTabla(), BorderLayout.SOUTH);
         raiz.add(centro, BorderLayout.CENTER);
 
-        lblEstado.setBorder(new EmptyBorder(6, 20, 8, 20));
-        raiz.add(lblEstado, BorderLayout.SOUTH);
+        // Barra de progreso + etiqueta de estado al pie
+        barraProgreso.setIndeterminate(true);
+        barraProgreso.setStringPainted(true);
+        barraProgreso.setString("Cargando...");
+        barraProgreso.setVisible(false);
+
+        JPanel pie = new JPanel(new BorderLayout(0, 2));
+        pie.setBorder(new EmptyBorder(0, 20, 8, 20));
+        pie.add(barraProgreso, BorderLayout.NORTH);
+        pie.add(lblEstado, BorderLayout.CENTER);
+        raiz.add(pie, BorderLayout.SOUTH);
     }
 
-    private JToolBar construirBarraHerramientas() {
+    private JToolBar construirBarra() {
         JToolBar barra = new JToolBar();
         barra.setFloatable(false);
-        for (JButton b : new JButton[] { btnGuardar, btnRefrescar, btnUsuarios }) {
+        for (JButton b : new JButton[]{btnGuardar, btnRefrescar, btnUsuarios}) {
             b.setFocusable(false);
             barra.add(b);
         }
@@ -148,171 +183,204 @@ public class VentanaPrincipal extends JFrame {
         JMenuBar barra = new JMenuBar();
 
         JMenu archivo = new JMenu("Archivo");
-        JMenuItem cerrarSesion = new JMenuItem("Cerrar sesión");
-        cerrarSesion.addActionListener(e -> cerrarSesion());
+        JMenuItem cerrar = new JMenuItem("Cerrar sesión");
+        cerrar.addActionListener(e -> cerrarSesion());
         JMenuItem salir = new JMenuItem("Salir");
         salir.addActionListener(e -> System.exit(0));
-        archivo.add(cerrarSesion);
+        archivo.add(cerrar);
         archivo.addSeparator();
         archivo.add(salir);
 
-        JMenu administracion = new JMenu("Administración");
-        JMenuItem gestionUsuarios = new JMenuItem("Gestión de usuarios");
-        gestionUsuarios.addActionListener(e -> abrirUsuarios());
-        administracion.add(gestionUsuarios);
+        JMenu admin = new JMenu("Administración");
+        JMenuItem usuarios = new JMenuItem("Gestión de usuarios");
+        usuarios.addActionListener(e -> abrirUsuarios());
+        admin.add(usuarios);
 
         barra.add(archivo);
-        barra.add(administracion);
+        barra.add(admin);
         return barra;
     }
 
     private JPanel construirFormulario() {
         JPanel p = new JPanel(new GridBagLayout());
-        int fila = 0;
-        fila = agregarFila(p, fila, new JLabel("Tipo de cliente"), cmbTipo);
-        fila = agregarFila(p, fila, lblNombre, txtNombre);
-        fila = agregarFila(p, fila, lblApellido, txtApellido);
-        fila = agregarFila(p, fila, lblDni, txtDni);
-        fila = agregarFila(p, fila, lblRubro, txtRubro);
-        fila = agregarFila(p, fila, lblDirector, txtDirector);
-        fila = agregarFila(p, fila, new JLabel("Historial"), chkBuenHistorial);
-        fila = agregarFila(p, fila, new JLabel("Ingresos"), txtIngresos);
-        fila = agregarFila(p, fila, new JLabel("Gastos"), txtGastos);
+        int f = 0;
+        f = fila(p, f, new JLabel("Tipo de cliente"),    cmbTipo);
+        f = fila(p, f, new JLabel("Nombre de cliente"),  txtNombreCliente);
+        f = fila(p, f, lblNombre,                        txtNombre);
+        f = fila(p, f, lblApellido,                      txtApellido);
+        f = fila(p, f, lblDni,                           txtDni);
+        f = fila(p, f, lblRubro,                         txtRubro);
+        f = fila(p, f, lblDirector,                      txtDirector);
+        f = fila(p, f, new JLabel("Historial"),          chkHistorial);
+        f = fila(p, f, new JLabel("Ingresos"),           txtIngresos);
+        f = fila(p, f, new JLabel("Gastos"),             txtGastos);
 
-        txtIngresos.setToolTipText("Monto con punto o coma decimal, sin separador de miles. Ej: 150000,50");
-        txtGastos.setToolTipText("Monto con punto o coma decimal, sin separador de miles. Ej: 80000");
-        txtDni.setToolTipText("7 u 8 dígitos, sin puntos");
+        txtNombreCliente.setToolTipText("Identificador único del cliente en el sistema");
+        txtIngresos.setToolTipText("Use punto o coma decimal, sin separador de miles. Ej: 150000,50");
+        txtGastos  .setToolTipText("Use punto o coma decimal, sin separador de miles. Ej: 80000");
+        txtDni     .setToolTipText("7 u 8 dígitos, sin puntos ni espacios");
 
-        camposPersona = new JComponent[] { lblApellido, txtApellido, lblDni, txtDni };
-        camposEmpresa = new JComponent[] { lblRubro, txtRubro, lblDirector, txtDirector };
+        camposPersona = new JComponent[]{lblNombre, txtNombre, lblApellido, txtApellido, lblDni, txtDni};
+        camposEmpresa = new JComponent[]{lblRubro,  txtRubro,  lblDirector, txtDirector};
 
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
         botones.add(btnRegistrar);
         botones.add(btnEliminar);
         GridBagConstraints c = new GridBagConstraints();
-        c.gridy = fila;
-        c.gridx = 0;
-        c.gridwidth = 2;
+        c.gridy = f; c.gridx = 0; c.gridwidth = 2;
         c.insets = new Insets(18, 8, 4, 8);
         p.add(botones, c);
         return p;
     }
 
-    /** Agrega "etiqueta | campo" en una fila del formulario. */
-    private static int agregarFila(JPanel p, int fila, JComponent etiqueta, JComponent campo) {
+    private static int fila(JPanel p, int fila, JComponent etiqueta, JComponent campo) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridy = fila;
         c.insets = new Insets(5, 8, 5, 8);
-        c.gridx = 0;
-        c.anchor = GridBagConstraints.LINE_END;
+        c.gridx = 0; c.anchor = GridBagConstraints.LINE_END;
         p.add(etiqueta, c);
-        c.gridx = 1;
-        c.anchor = GridBagConstraints.LINE_START;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.weightx = 1;
+        c.gridx = 1; c.anchor = GridBagConstraints.LINE_START;
+        c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1;
         p.add(campo, c);
         return fila + 1;
     }
 
     private JScrollPane construirTabla() {
-        JTable tabla = new JTable(modeloTabla);
         tabla.setFillsViewportHeight(true);
         JScrollPane scroll = new JScrollPane(tabla);
-        scroll.setBorder(BorderFactory.createTitledBorder("Personas registradas"));
-        scroll.setPreferredSize(new Dimension(700, 170));
+        scroll.setBorder(BorderFactory.createTitledBorder("Clientes registrados"));
+        scroll.setPreferredSize(new Dimension(740, 170));
         return scroll;
     }
 
     private void conectarEventos() {
-        cmbTipo.addActionListener(e -> actualizarTipo());
-        btnRegistrar.addActionListener(e -> registrar());
-        btnGuardar.addActionListener(e -> registrar());
-        btnEliminar.addActionListener(e -> eliminar());
-        btnRefrescar.addActionListener(e -> refrescar());
-        btnUsuarios.addActionListener(e -> abrirUsuarios());
-        getRootPane().setDefaultButton(btnRegistrar); // Enter = Registrar
+        cmbTipo      .addActionListener(e -> actualizarTipo());
+        btnRegistrar .addActionListener(e -> registrar());
+        btnGuardar   .addActionListener(e -> registrar());
+        btnEliminar  .addActionListener(e -> eliminar());
+        btnRefrescar .addActionListener(e -> refrescar());
+        btnUsuarios  .addActionListener(e -> abrirUsuarios());
+        getRootPane().setDefaultButton(btnRegistrar);
     }
 
-    // ================================================================== acciones
+    // ================================================================== lógica de tipo
 
     private boolean esPersona() {
         return "Persona".equals(cmbTipo.getSelectedItem());
     }
 
-    /** Muestra los campos que corresponden al tipo de cliente elegido. */
+    /**
+     * Se llama cuando cambia el combo: actualiza los campos visibles, el título
+     * de la columna de nombre real/rubro, cambia el modelo de la tabla y recarga
+     * el listado correspondiente de la base.
+     */
     private void actualizarTipo() {
         boolean persona = esPersona();
-        lblNombre.setText(persona ? "Nombre" : "Nombre de la empresa");
-        for (JComponent c : camposPersona) {
-            c.setVisible(persona);
-        }
-        for (JComponent c : camposEmpresa) {
-            c.setVisible(!persona);
-        }
+        for (JComponent c : camposPersona) c.setVisible(persona);
+        for (JComponent c : camposEmpresa) c.setVisible(!persona);
+        lblNombre.setText(persona ? "Nombre" : "Nombre real de la empresa");
+        tabla.setModel(persona ? modeloPersonas : modeloEmpresas);
+        limpiarFormulario();
+        cargarListado(true);
         getContentPane().revalidate();
         getContentPane().repaint();
     }
 
-    /** Registrar / Guardar: da de alta la persona o empresa cargada en el formulario. */
+    // ================================================================== acciones
+
     private void registrar() {
-        Cliente cliente = crearParaAlta();
-        if (cliente == null) {
-            return;
+        Cliente cliente = armarParaAlta();
+        if (cliente == null) return;
+
+        if (esPersona()) {
+            TareaDB.ejecutar(this, () -> {
+                Resultado r = ((Persona) cliente).altaPersona();
+                return new RespPersona(r, r.exito() ? Persona.listarPersonas(conexion) : null);
+            }, resp -> {
+                if (resp.res().exito()) {
+                    estado(resp.res().mensaje() + ". " + cliente.evaluarHistorial(cliente.historial) + ".", false);
+                    limpiarFormulario();
+                    if (resp.lista() != null) llenarPersonas(resp.lista());
+                } else {
+                    advertir("No se pudo registrar", resp.res().mensaje());
+                }
+            }, null, barraProgreso, botonesBD);
+        } else {
+            TareaDB.ejecutar(this, () -> {
+                Resultado r = ((Empresa) cliente).altaEmpresa();
+                return new RespEmpresa(r, r.exito() ? Empresa.listarEmpresas(conexion) : null);
+            }, resp -> {
+                if (resp.res().exito()) {
+                    estado(resp.res().mensaje() + ". " + cliente.evaluarHistorial(cliente.historial) + ".", false);
+                    limpiarFormulario();
+                    if (resp.lista() != null) llenarEmpresas(resp.lista());
+                } else {
+                    advertir("No se pudo registrar", resp.res().mensaje());
+                }
+            }, null, barraProgreso, botonesBD);
         }
-        boolean persona = cliente instanceof Persona;
-        TareaDB.ejecutar(this, () -> {
-            Resultado r = persona ? ((Persona) cliente).altaPersona() : ((Empresa) cliente).altaEmpresa();
-            return new Respuesta(r, persona && r.exito() ? intentarListar() : null);
-        }, resp -> {
-            if (resp.resultado().exito()) {
-                estado(resp.resultado().mensaje() + ". " + cliente.evaluarHistorial(cliente.historial) + ".", false);
-                limpiarFormulario();
-            } else {
-                advertir("No se pudo registrar", resp.resultado().mensaje());
-            }
-            mostrarListado(resp.personas());
-        }, null, botonesDB());
     }
 
-    /** Eliminar: da de baja la persona (nombre + apellido + DNI) o la empresa (nombre) indicada. */
     private void eliminar() {
-        Cliente cliente = crearParaBaja();
-        if (cliente == null) {
-            return;
-        }
+        Cliente cliente = armarParaBaja();
+        if (cliente == null) return;
+
         boolean persona = cliente instanceof Persona;
-        String quien = persona ? "a la persona " + cliente.nombreCliente + " (DNI " + ((Persona) cliente).getDni() + ")"
-                : "a la empresa " + cliente.nombreCliente;
-        int r = JOptionPane.showConfirmDialog(this, "¿Eliminar " + quien + "?", "Confirmar eliminación",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (r != JOptionPane.YES_OPTION) {
-            return;
+        String quien = persona
+                ? "a la persona con nombre de cliente \"" + cliente.nombreCliente
+                  + "\" (DNI " + ((Persona) cliente).getDni() + ")"
+                : "a la empresa con nombre de cliente \"" + cliente.nombreCliente + "\"";
+        int r = JOptionPane.showConfirmDialog(this, "¿Eliminar " + quien + "?",
+                "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (r != JOptionPane.YES_OPTION) return;
+
+        if (persona) {
+            TareaDB.ejecutar(this, () -> {
+                Resultado res = ((Persona) cliente).bajaPersona();
+                return new RespPersona(res, res.exito() ? Persona.listarPersonas(conexion) : null);
+            }, resp -> {
+                if (resp.res().exito()) {
+                    estado(resp.res().mensaje() + ".", false);
+                    limpiarFormulario();
+                    if (resp.lista() != null) llenarPersonas(resp.lista());
+                } else {
+                    advertir("No se pudo eliminar", resp.res().mensaje());
+                }
+            }, null, barraProgreso, botonesBD);
+        } else {
+            TareaDB.ejecutar(this, () -> {
+                Resultado res = ((Empresa) cliente).bajaEmpresa();
+                return new RespEmpresa(res, res.exito() ? Empresa.listarEmpresas(conexion) : null);
+            }, resp -> {
+                if (resp.res().exito()) {
+                    estado(resp.res().mensaje() + ".", false);
+                    limpiarFormulario();
+                    if (resp.lista() != null) llenarEmpresas(resp.lista());
+                } else {
+                    advertir("No se pudo eliminar", resp.res().mensaje());
+                }
+            }, null, barraProgreso, botonesBD);
         }
-        TareaDB.ejecutar(this, () -> {
-            Resultado res = persona ? ((Persona) cliente).bajaPersona() : ((Empresa) cliente).bajaEmpresa();
-            return new Respuesta(res, persona && res.exito() ? intentarListar() : null);
-        }, resp -> {
-            if (resp.resultado().exito()) {
-                estado(resp.resultado().mensaje() + ".", false);
-                limpiarFormulario();
-            } else {
-                advertir("No se pudo eliminar", resp.resultado().mensaje());
-            }
-            mostrarListado(resp.personas());
-        }, null, botonesDB());
     }
 
-    /** Refrescar: limpia el formulario y vuelve a pedir el listado a la base. */
     private void refrescar() {
         limpiarFormulario();
-        cargarPersonas(false);
+        cargarListado(false);
     }
 
-    private void cargarPersonas(boolean silencioso) {
-        TareaDB.ejecutar(this, () -> Persona.listarPersonas(conexion), lista -> {
-            cargarTabla(lista);
-            estado("Listado actualizado: " + lista.size() + " persona(s) registrada(s).", false);
-        }, silencioso ? msg -> estado(msg, true) : null, botonesDB());
+    private void cargarListado(boolean silencioso) {
+        Consumer<String> onError = silencioso ? msg -> estado(msg, true) : null;
+        if (esPersona()) {
+            TareaDB.ejecutar(this, () -> Persona.listarPersonas(conexion), lista -> {
+                llenarPersonas(lista);
+                estado("Listado actualizado: " + lista.size() + " persona(s) registrada(s).", false);
+            }, onError, barraProgreso, botonesBD);
+        } else {
+            TareaDB.ejecutar(this, () -> Empresa.listarEmpresas(conexion), lista -> {
+                llenarEmpresas(lista);
+                estado("Listado actualizado: " + lista.size() + " empresa(s) registrada(s).", false);
+            }, onError, barraProgreso, botonesBD);
+        }
     }
 
     private void abrirUsuarios() {
@@ -325,125 +393,135 @@ public class VentanaPrincipal extends JFrame {
 
     private void cerrarSesion() {
         Usuario.cerrarSesion();
-        if (ventanaUsuario != null) {
-            ventanaUsuario.dispose();
-        }
+        if (ventanaUsuario != null) ventanaUsuario.dispose();
         dispose();
         new VentanaLogin(conexion).setVisible(true);
     }
 
-    // ================================================================== del formulario a las clases lógicas
+    // ================================================================== formulario → clases lógicas
 
-    /** Arma la Persona/Empresa del formulario y la valida. Si algo está mal avisa y devuelve null. */
-    private Cliente crearParaAlta() {
+    /**
+     * Lee los campos del formulario y construye la Persona o Empresa lista para
+     * dar de alta. Devuelve null y muestra el error si los datos son inválidos.
+     */
+    private Cliente armarParaAlta() {
         try {
-            // Los montos se leen primero pero su error se informa último, para que si faltan
-            // datos de identidad el mensaje sea el del primer campo vacío del formulario.
-            String errorMonto = null;
-            double ingresos = 0;
-            double gastos = 0;
-            try {
-                ingresos = Cliente.parsearMonto(txtIngresos.getText(), "Ingresos");
-            } catch (IllegalArgumentException ex) {
-                errorMonto = ex.getMessage();
-            }
-            try {
-                gastos = Cliente.parsearMonto(txtGastos.getText(), "Gastos");
-            } catch (IllegalArgumentException ex) {
-                if (errorMonto == null) {
-                    errorMonto = ex.getMessage();
-                }
-            }
+            // Montos: se parsean primero pero su error se informa después de
+            // los campos de identidad, para que el primer mensaje sea el más relevante.
+            String errMonto = null;
+            double ingresos = 0, gastos = 0;
+            try { ingresos = Cliente.parsearMonto(txtIngresos.getText(), "Ingresos"); }
+            catch (IllegalArgumentException ex) { errMonto = ex.getMessage(); }
+            try { gastos = Cliente.parsearMonto(txtGastos.getText(), "Gastos"); }
+            catch (IllegalArgumentException ex) { if (errMonto == null) errMonto = ex.getMessage(); }
 
-            boolean bueno = chkBuenHistorial.isSelected();
-            Cliente cliente;
+            boolean bueno = chkHistorial.isSelected();
+            Cliente c;
             if (esPersona()) {
-                cliente = new Persona(txtNombre.getText(), txtApellido.getText(), txtDni.getText(),
-                        ingresos, gastos, personaAuxiliar.codigoHistorial(bueno), conexion);
+                c = new Persona(
+                        txtNombreCliente.getText(),
+                        txtNombre.getText(),
+                        txtApellido.getText(),
+                        txtDni.getText(),
+                        ingresos, gastos,
+                        personaAux.codigoHistorial(bueno),
+                        conexion);
             } else {
-                cliente = new Empresa(txtNombre.getText().trim(), ingresos, gastos, empresaAuxiliar.codigoHistorial(bueno),
-                        txtRubro.getText(), txtDirector.getText(), conexion);
+                c = new Empresa(
+                        txtNombreCliente.getText().trim(),
+                        ingresos, gastos,
+                        empresaAux.codigoHistorial(bueno),
+                        txtRubro.getText(),
+                        txtDirector.getText(),
+                        conexion);
             }
-            cliente.validarAlta();
-            if (errorMonto != null) {
-                throw new IllegalArgumentException(errorMonto);
-            }
-            return cliente;
+            c.validarAlta();
+            if (errMonto != null) throw new IllegalArgumentException(errMonto);
+            return c;
         } catch (IllegalArgumentException ex) {
             advertir("Datos inválidos", ex.getMessage());
             return null;
         }
     }
 
-    private Cliente crearParaBaja() {
+    /** Lee solo los datos necesarios para la baja (no valida montos ni historial). */
+    private Cliente armarParaBaja() {
         try {
-            Cliente cliente = esPersona()
-                    ? new Persona(txtNombre.getText(), txtApellido.getText(), txtDni.getText(), 0, 0, "", conexion)
-                    : new Empresa(txtNombre.getText().trim(), 0, 0, "", "", "", conexion);
-            cliente.validarBaja();
-            return cliente;
+            Cliente c = esPersona()
+                    ? new Persona(txtNombreCliente.getText(), txtNombre.getText(),
+                                  txtApellido.getText(), txtDni.getText(), 0, 0, "", conexion)
+                    : new Empresa(txtNombreCliente.getText().trim(), 0, 0, "", "", "", conexion);
+            c.validarBaja();
+            return c;
         } catch (IllegalArgumentException ex) {
             advertir("Datos inválidos", ex.getMessage());
             return null;
         }
     }
 
-    // ================================================================== de las clases lógicas a la pantalla
+    // ================================================================== clases lógicas → tabla
 
-    /** Listado para refrescar la tabla tras un cambio. Si falla, no se pisa el resultado de la operación. */
-    private List<Persona.Resumen> intentarListar() {
-        try {
-            return Persona.listarPersonas(conexion);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private void mostrarListado(List<Persona.Resumen> personas) {
-        if (personas != null) {
-            cargarTabla(personas);
-        }
-    }
-
-    private void cargarTabla(List<Persona.Resumen> lista) {
-        modeloTabla.setRowCount(0);
+    private void llenarPersonas(List<Persona.Resumen> lista) {
+        modeloPersonas.setRowCount(0);
         for (Persona.Resumen r : lista) {
-            modeloTabla.addRow(new Object[] {
-                r.nombre(), r.apellido(), PESOS.format(r.ingresos()), PESOS.format(r.gastos()),
-                descripcionHistorial(r.historial()) });
+            modeloPersonas.addRow(new Object[]{
+                r.nombreCliente() != null ? r.nombreCliente() : "-",
+                r.nombre(),
+                r.apellido(),
+                PESOS.format(r.ingresos()),
+                PESOS.format(r.gastos()),
+                historialPersona(r.historial())
+            });
         }
     }
 
-    private String descripcionHistorial(String codigo) {
-        if (personaAuxiliar.esBuenHistorial(codigo)) {
-            return "Bueno";
+    private void llenarEmpresas(List<Empresa.Resumen> lista) {
+        modeloEmpresas.setRowCount(0);
+        for (Empresa.Resumen r : lista) {
+            modeloEmpresas.addRow(new Object[]{
+                r.nombreCliente(),
+                r.rubro(),
+                r.director(),
+                PESOS.format(r.ingresos()),
+                PESOS.format(r.gastos()),
+                historialEmpresa(r.historial())
+            });
         }
-        if (codigo != null && codigo.trim().equalsIgnoreCase(personaAuxiliar.codigoHistorial(false))) {
-            return "Malo";
-        }
-        return codigo == null ? "-" : codigo; // código que no es de este sistema: se muestra tal cual
+    }
+
+    private String historialPersona(String codigo) {
+        if (personaAux.esBuenHistorial(codigo)) return "Bueno";
+        if (codigo != null && codigo.trim().equalsIgnoreCase(personaAux.codigoHistorial(false))) return "Malo";
+        return codigo == null ? "-" : codigo;
+    }
+
+    private String historialEmpresa(String codigo) {
+        if (codigo == null) return "-";
+        return switch (codigo.trim().toUpperCase()) {
+            case "A" -> "Bueno";
+            case "B" -> "Regular";
+            case "C" -> "Malo";
+            default  -> codigo;
+        };
     }
 
     private void limpiarFormulario() {
-        txtNombre.setText("");
-        txtApellido.setText("");
-        txtDni.setText("");
-        txtRubro.setText("");
-        txtDirector.setText("");
-        txtIngresos.setText("");
-        txtGastos.setText("");
-        chkBuenHistorial.setSelected(false);
-        txtNombre.requestFocusInWindow();
-    }
-
-    private JComponent[] botonesDB() {
-        return new JComponent[] { btnRegistrar, btnEliminar, btnGuardar, btnRefrescar };
+        txtNombreCliente.setText("");
+        txtNombre   .setText("");
+        txtApellido .setText("");
+        txtDni      .setText("");
+        txtRubro    .setText("");
+        txtDirector .setText("");
+        txtIngresos .setText("");
+        txtGastos   .setText("");
+        chkHistorial.setSelected(false);
+        txtNombreCliente.requestFocusInWindow();
     }
 
     private void estado(String texto, boolean error) {
         lblEstado.setForeground(error ? ROJO : VERDE);
         lblEstado.setText(texto);
-        lblEstado.setToolTipText(texto); // por si el mensaje es más ancho que la ventana
+        lblEstado.setToolTipText(texto);
     }
 
     private void advertir(String titulo, String mensaje) {

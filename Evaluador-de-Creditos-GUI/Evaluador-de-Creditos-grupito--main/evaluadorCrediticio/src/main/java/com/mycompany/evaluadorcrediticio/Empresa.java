@@ -1,12 +1,26 @@
 package com.mycompany.evaluadorcrediticio;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 //@autor Leoncito
 
 public class Empresa extends Cliente {
     private String rubro;
     private String director;
+
+    /** Listado de empresas (no hay procedimiento almacenado para esto, es una consulta directa). */
+    private static final String SQL_LISTADO = "select c.nombreCliente, e.rubro, e.director, c.ingresos, c.gastos, c.historial "
+            + "from Cliente as c join Empresa as e on c.idCliente = e.idCliente";
+
+    /** Una fila del listado de empresas. */
+    public record Resumen(String nombreCliente, String rubro, String director,
+            double ingresos, double gastos, String historial) {
+    }
 
     public Empresa() {
     }
@@ -82,5 +96,25 @@ public class Empresa extends Cliente {
                 cst -> cst.setString(1, nombreCliente.trim()));
     }
 
-    
+    /** Todas las empresas registradas. */
+    public static List<Resumen> listarEmpresas(ConexionBDD conx) throws SQLException {
+        if (conx == null) {
+            throw new IllegalStateException("No hay una conexión a la base de datos configurada.");
+        }
+        List<Resumen> lista = new ArrayList<>();
+        try (Connection cnx = conx.abrir();
+                PreparedStatement ps = cnx.prepareStatement(SQL_LISTADO);
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                lista.add(new Resumen(
+                        rs.getString("nombreCliente"),
+                        rs.getString("rubro"),
+                        rs.getString("director"),
+                        rs.getDouble("ingresos"),
+                        rs.getDouble("gastos"),
+                        rs.getString("historial")));
+            }
+        }
+        return lista;
+    }
 }

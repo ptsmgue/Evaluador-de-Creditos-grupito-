@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 
 /**
@@ -21,17 +22,23 @@ final class TareaDB {
     }
 
     /**
-     * @param padre     ventana sobre la que se muestran los errores
-     * @param trabajo   operación a ejecutar en segundo plano
-     * @param alExito   se ejecuta en el hilo de la interfaz con el valor devuelto
-     * @param alFallar  se ejecuta en el hilo de la interfaz con el mensaje de error;
-     *                  si es null se muestra un cuadro de diálogo
-     * @param bloquear  controles que se deshabilitan mientras la operación corre
+     * @param padre    ventana sobre la que se muestran los errores
+     * @param trabajo  operación a ejecutar en segundo plano
+     * @param alExito  se ejecuta en el hilo de la interfaz con el valor devuelto
+     * @param alFallar se ejecuta en el hilo de la interfaz con el mensaje de error;
+     *                 si es null se muestra un cuadro de diálogo
+     * @param barra    barra de progreso indeterminada que se muestra mientras corre
+     *                 la operación y se oculta al terminar; null la ignora
+     * @param bloquear controles que se deshabilitan mientras la operación corre
      */
     static <T> void ejecutar(Component padre, Callable<T> trabajo, Consumer<T> alExito,
-            Consumer<String> alFallar, JComponent... bloquear) {
+            Consumer<String> alFallar, JProgressBar barra, JComponent... bloquear) {
         for (JComponent c : bloquear) {
             c.setEnabled(false);
+        }
+        if (barra != null) {
+            barra.setIndeterminate(true);
+            barra.setVisible(true);
         }
         padre.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
@@ -45,6 +52,10 @@ final class TareaDB {
             protected void done() {
                 for (JComponent c : bloquear) {
                     c.setEnabled(true);
+                }
+                if (barra != null) {
+                    barra.setIndeterminate(false);
+                    barra.setVisible(false);
                 }
                 padre.setCursor(Cursor.getDefaultCursor());
 
@@ -61,6 +72,12 @@ final class TareaDB {
                 alExito.accept(valor);
             }
         }.execute();
+    }
+
+    /** Variante sin barra de progreso, para ventanas que no la necesitan. */
+    static <T> void ejecutar(Component padre, Callable<T> trabajo, Consumer<T> alExito,
+            Consumer<String> alFallar, JComponent... bloquear) {
+        ejecutar(padre, trabajo, alExito, alFallar, null, bloquear);
     }
 
     private static void informar(Component padre, Consumer<String> alFallar, Throwable causa) {

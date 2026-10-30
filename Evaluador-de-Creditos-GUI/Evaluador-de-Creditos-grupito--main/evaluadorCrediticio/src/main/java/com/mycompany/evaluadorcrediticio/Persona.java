@@ -16,26 +16,27 @@ public class Persona extends Cliente {
 
     private static final Pattern DNI = Pattern.compile("\\d{7,8}");
 
-    /** Una fila del listado que devuelve verHistorialPersona. */
-    public record Resumen(String nombre, String apellido, double ingresos, double gastos, String historial) {
+    /**
+     * Una fila del listado que devuelve verHistorialPersona. nombreCliente es null
+     * si el procedimiento no devuelve esa columna.
+     */
+    public record Resumen(String nombreCliente, String nombre, String apellido,
+            double ingresos, double gastos, String historial) {
     }
 
     public Persona() {
     }
 
     /**
-     * El nombreCliente que se guarda en la BD se arma como "nombre apellido".
+     * nombreCliente es el nombre único del cliente en el sistema; es independiente
+     * del nombre y apellido reales (dos personas pueden llamarse igual).
      */
-    public Persona(String nombrePersona, String apellido, String dni,
+    public Persona(String nombreCliente, String nombrePersona, String apellido, String dni,
             double ingresos, double gastos, String historial, ConexionBDD conx) {
-        super(nombreCompleto(nombrePersona, apellido), ingresos, gastos, historial, conx);
+        super(nombreCliente == null ? null : nombreCliente.trim(), ingresos, gastos, historial, conx);
         this.nombrePersona = nombrePersona == null ? null : nombrePersona.trim();
         this.apellido = apellido == null ? null : apellido.trim();
         this.dni = dni == null ? null : dni.trim();
-    }
-
-    private static String nombreCompleto(String nombre, String apellido) {
-        return ((nombre == null ? "" : nombre.trim()) + " " + (apellido == null ? "" : apellido.trim())).trim();
     }
 
     public String getNombrePersona() {
@@ -68,21 +69,33 @@ public class Persona extends Cliente {
 
     // ------------------------------------------------------------------ validaciones
 
+    private void validarNombreCliente() {
+        if (esVacio(nombreCliente)) {
+            throw new IllegalArgumentException("El nombre de cliente es obligatorio.");
+        }
+    }
+
+    private void validarDni() {
+        if (dni == null || !DNI.matcher(dni).matches()) {
+            throw new IllegalArgumentException("El DNI debe tener 7 u 8 dígitos, sin puntos ni espacios.");
+        }
+    }
+
     private void validarIdentidad() {
+        validarNombreCliente();
         if (esVacio(nombrePersona)) {
             throw new IllegalArgumentException("El nombre es obligatorio.");
         }
         if (esVacio(apellido)) {
             throw new IllegalArgumentException("El apellido es obligatorio.");
         }
-        if (dni == null || !DNI.matcher(dni).matches()) {
-            throw new IllegalArgumentException("El DNI debe tener 7 u 8 dígitos, sin puntos ni espacios.");
-        }
+        validarDni();
     }
 
     @Override
     public void validarBaja() {
-        validarIdentidad();
+        validarNombreCliente();
+        validarDni();
     }
 
     @Override
@@ -125,6 +138,7 @@ public class Persona extends Cliente {
                 ResultSet rs = cst.executeQuery()) {
             while (rs.next()) {
                 lista.add(new Resumen(
+                        columnaOpcional(rs, "nombreCliente"),
                         rs.getString("nombrePersona"),
                         rs.getString("apellidoPersona"),
                         rs.getDouble("ingresos"),
@@ -133,5 +147,14 @@ public class Persona extends Cliente {
             }
         }
         return lista;
+    }
+
+    /** Lee una columna que el procedimiento puede o no devolver; null si no existe. */
+    private static String columnaOpcional(ResultSet rs, String columna) {
+        try {
+            return rs.getString(columna);
+        } catch (SQLException e) {
+            return null;
+        }
     }
 }
