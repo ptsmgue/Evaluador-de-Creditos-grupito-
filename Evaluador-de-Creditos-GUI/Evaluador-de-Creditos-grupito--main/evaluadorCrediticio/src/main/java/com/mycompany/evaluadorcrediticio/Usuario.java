@@ -1,26 +1,17 @@
 package com.mycompany.evaluadorcrediticio;
 
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Usuarios del sistema.
- *
- * Por ahora la lista vive en memoria (no hay tabla de usuarios en la BD):
- * arranca con el usuario admin/1234 que ya existía y los cambios se pierden
- * al cerrar el programa. Todo el acceso pasa por los métodos estáticos de esta
- * clase, así que pasar a la BD más adelante no toca las ventanas.
- */
 public class Usuario {
     public String nombreUsuario;
     public String contrasena;
 
-    private static final List<Usuario> USUARIOS = new ArrayList<>();
     private static Usuario usuarioActual;
-
-    static {
-        USUARIOS.add(new Usuario("admin", "1234"));
-    }
 
     public Usuario() {
     }
@@ -30,16 +21,28 @@ public class Usuario {
         this.contrasena = contrasena;
     }
 
-    /** Valida las credenciales y, si son correctas, deja al usuario como sesión actual. */
+    /** Valida las credenciales en la BD y, si son correctas, deja al usuario como sesión actual. */
     public static boolean iniciarSesion(String nombre, String contra) {
         if (nombre == null || contra == null) {
             return false;
         }
-        for (Usuario u : USUARIOS) {
-            if (u.nombreUsuario.equalsIgnoreCase(nombre.trim()) && u.contrasena.equals(contra)) {
-                usuarioActual = u;
-                return true;
+        
+        ConexionBDD db = new ConexionBDD();
+        try (Connection conn = db.abrir();
+             CallableStatement stmt = conn.prepareCall("{call sp_iniciar_sesion(?, ?)}")) {
+            
+            stmt.setString(1, nombre.trim());
+            stmt.setString(2, contra);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                verificarErrorSP(rs); // Chequea si el procedure devolvió un mensaje de error
+                if (rs.next()) {
+                    usuarioActual = new Usuario(rs.getString("nombreUsuario"), rs.getString("contrasena"));
+                    return true;
+                }
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return false;
     }
@@ -52,7 +55,7 @@ public class Usuario {
         return usuarioActual;
     }
 
-    /** Agrega un usuario. Lanza IllegalArgumentException si los datos no son válidos. */
+    /** Agrega un usuario en la BD. Lanza RuntimeException/IllegalArgumentException si falla. */
     public static void registrarUsuario(String nombre, String contra) {
         String n = nombre == null ? "" : nombre.trim();
         if (n.isEmpty()) {
@@ -64,35 +67,106 @@ public class Usuario {
         if (contra == null || contra.length() < 4) {
             throw new IllegalArgumentException("La contraseña debe tener al menos 4 caracteres.");
         }
-        if (buscar(n) != null) {
-            throw new IllegalArgumentException("Ya existe un usuario llamado \"" + n + "\".");
+
+        ConexionBDD db = new ConexionBDD();
+        try (Connection conn = db.abrir();
+             CallableStatement stmt = conn.prepareCall("{call sp_registrar_usuario(?, ?)}")) {
+            
+            stmt.setString(1, n);
+            stmt.setString(2, contra);
+            
+            // Usamos execute() porque puede devolver un ResultSet (si hubo error) o un update count (si anduvo bien)
+            boolean hasResultSet = stmt.execute();
+            if (hasResultSet) {
+                try (ResultSet rs = stmt.getResultSet()) {
+                    verificarErrorSP(rs);
+                }
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error de conexión al registrar usuario: " + e.getMessage());
         }
-        USUARIOS.add(new Usuario(n, contra));
     }
 
-    /** Elimina un usuario. No permite borrar al que tiene la sesión abierta. */
+    /** Elimina un usuario de la BD. No permite borrar al que tiene la sesión abierta. */
     public static void eliminarUsuario(String nombre) {
-        Usuario u = nombre == null ? null : buscar(nombre.trim());
-        if (u == null) {
-            throw new IllegalArgumentException("No existe el usuario indicado.");
-        }
-        if (u == usuarioActual) {
+        String n = nombre == null ? "" : nombre.trim();
+        
+        if (usuarioActual != null && n.equalsIgnoreCase(usuarioActual.nombreUsuario)) {
             throw new IllegalArgumentException("No podés eliminar al usuario con el que iniciaste sesión.");
         }
-        USUARIOS.remove(u);
+
+        ConexionBDD db = new ConexionBDD();
+        try (Connection conn = db.abrir();
+             CallableStatement stmt = conn.prepareCall("{call sp_eliminar_usuario(?)}")) {
+            
+            stmt.setString(1, n);
+            
+            boolean hasResultSet = stmt.execute();
+            if (hasResultSet) {
+                try (ResultSet rs = stmt.getResultSet()) {
+                    verificarErrorSP(rs);
+                }
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error de conexión al eliminar usuario: " + e.getMessage());
+        }
     }
 
-    /** Copia de la lista actual de usuarios. */
+    /** Consulta la lista actual de usuarios desde la BD. */
     public static List<Usuario> listarUsuarios() {
-        return new ArrayList<>(USUARIOS);
+        List<Usuario> lista = new ArrayList<>();
+        ConexionBDD db = new ConexionBDD();
+        
+        try (Connection conn = db.abrir();
+             CallableStatement stmt = conn.prepareCall("{call sp_listar_usuarios()}");
+             ResultSet rs = stmt.executeQuery()) {
+            
+            verificarErrorSP(rs);
+            while (rs.next()) {
+                lista.add(new Usuario(rs.getString("nombreUsuario"), rs.getString("contrasena")));
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return lista;
     }
 
     private static Usuario buscar(String nombre) {
-        for (Usuario u : USUARIOS) {
-            if (u.nombreUsuario.equalsIgnoreCase(nombre)) {
-                return u;
+        ConexionBDD db = new ConexionBDD();
+        try (Connection conn = db.abrir();
+             CallableStatement stmt = conn.prepareCall("{call sp_buscar_usuario(?)}")) {
+            
+            stmt.setString(1, nombre);
+            
+            try (ResultSet rs = stmt.executeQuery()) {
+                verificarErrorSP(rs);
+                if (rs.next()) {
+                    return new Usuario(rs.getString("nombreUsuario"), rs.getString("contrasena"));
+                }
             }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return null;
+    }
+    
+    /**
+     * Revisa si el ResultSet contiene la columna "MensajeError" generada por el EXIT HANDLER de MySQL.
+     * Si la encuentra, lanza una excepción para cortar el flujo, tal como si hubiera fallado el SQL.
+     */
+    private static void verificarErrorSP(ResultSet rs) throws SQLException {
+        if (rs != null && rs.getMetaData().getColumnCount() > 0) {
+            if (rs.getMetaData().getColumnName(1).equalsIgnoreCase("MensajeError")) {
+                if (rs.next()) {
+                    throw new RuntimeException(rs.getString("MensajeError"));
+                }
+            }
+        }
     }
 }

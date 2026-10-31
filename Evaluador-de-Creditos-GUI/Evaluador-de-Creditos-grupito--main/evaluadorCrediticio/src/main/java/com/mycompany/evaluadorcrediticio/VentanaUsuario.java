@@ -117,7 +117,7 @@ public class VentanaUsuario extends JFrame {
             txtContrasena.setText("");
             listar();
             estado("Usuario \"" + nombre + "\" añadido.", false);
-        } catch (IllegalArgumentException ex) {
+        } catch (Exception ex) { // Cambiado a Exception para atrapar tanto IllegalArgument como RuntimeException de la BD
             estado(ex.getMessage(), true);
         } finally {
             Arrays.fill(clave, '\0');
@@ -141,7 +141,7 @@ public class VentanaUsuario extends JFrame {
             txtUsuario.setText("");
             listar();
             estado("Usuario \"" + nombre + "\" eliminado.", false);
-        } catch (IllegalArgumentException ex) {
+        } catch (Exception ex) { // Cambiado a Exception para los errores de la BD
             estado(ex.getMessage(), true);
         }
     }
@@ -151,8 +151,11 @@ public class VentanaUsuario extends JFrame {
         modelo.setRowCount(0);
         Usuario actual = Usuario.getUsuarioActual();
         for (Usuario u : Usuario.listarUsuarios()) {
-            // Nunca se muestran las contraseñas.
-            modelo.addRow(new Object[] { u.nombreUsuario, u == actual ? "Sesión actual" : "" });
+            // Evaluamos si el nombre coincide ignorando mayúsculas/minúsculas
+            String textoEstado = (actual != null && u.nombreUsuario.equalsIgnoreCase(actual.nombreUsuario)) 
+                                 ? "Sesión actual" 
+                                 : "";
+            modelo.addRow(new Object[] { u.nombreUsuario, textoEstado });
         }
     }
 
