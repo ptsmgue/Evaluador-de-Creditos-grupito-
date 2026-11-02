@@ -11,10 +11,10 @@
             url = "jdbc:mysql://" + server + "/" + bdd
                     + "?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true&connectTimeout=5000";
 
-  ## Integrantes
-  Moreno Miguel
-  Acosta Santiago
-  Ligorria Adriel
-  Gil Granero León
+## Integrantes
+Moreno Miguel -
+Acosta Santiago -
+Ligorria Adriel -
+Gil Granero León -
 
-  # Gracias.
+# Gracias.
